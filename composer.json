@@ -1,20 +1,20 @@
 {
-    "name": "wazaari/monolog-mysql",
+    "name": "detain/monolog-mydb",
     "description": "A handler for Monolog that sends messages to MySQL",
     "keywords": ["log", "logging", "monolog", "mysql", "database"],
-    "homepage": "https://github.com/waza-ari/monolog-mysql",
+    "homepage": "https://github.com/detain/monolog-mysql",
     "license": "MIT",
     "authors": [
         {
-            "name": "Daniel Herrmann",
-            "email": "daniel.herrmann1@gmail.com"
+            "name": "Joe Huss",
+            "email": "detain@interserver.net",
         }
     ],
     "require": {
         "monolog/monolog": ">1.4.0",
-        "ext-pdo_mysql": "*"
+        "detain/db_abstraction": "dev-master",
     },
     "autoload": {
-        "psr-4": {"MySQLHandler\\": "src/MySQLHandler"}
+        "psr-4": {"MyDbHandler\\": "src/MyDbHandler"}
     }
 }
