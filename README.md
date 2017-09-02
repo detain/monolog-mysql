@@ -11,7 +11,7 @@ Homepage: http://www.d-herrmann.de/projects/monolog-mysql-handler/
 monolog-mysql is available via composer. Just add the following line to your required section in composer.json and do a `php composer.phar update`.
 
 ```
-"wazaari/monolog-mysql": ">1.0.0"
+"detain/monolog-mysql": ">1.0.0"
 ```
 
 # Usage
@@ -29,14 +29,14 @@ of a logger please refer to the [monolog documentation](https://github.com/Selda
 
 ```php
 //Import class
-use MySQLHandler\MySQLHandler;
+use MyDbHandler\MyDbHandler;
 
-//Create MysqlHandler
-$mySQLHandler = new MySQLHandler($pdo, "log", array('username', 'userid'), \Monolog\Logger::DEBUG);
+//Create MydbHandler
+$myDBHandler = new MyDbHandler($pdo, "log", array('username', 'userid'), \Monolog\Logger::DEBUG);
 
 //Create logger
 $logger = new \Monolog\Logger($context);
-$logger->pushHandler($mySQLHandler);
+$logger->pushHandler($myDBHandler);
 
 //Now you can use the logger, and further attach additional information
 $logger->addWarning("This is a great message, woohoo!", array('username'  => 'John Doe', 'userid'  => 245));

@@ -1,6 +1,6 @@
 <?php
 
-namespace MySQLHandler;
+namespace MyDbHandler;
 
 use Monolog\Logger;
 use Monolog\Handler\AbstractProcessingHandler;
@@ -12,8 +12,8 @@ use DateTime;
  * This class is a handler for Monolog, which can be used
  * to write records in a MySQL table
  *
- * Class MySQLHandler
- * @package wazaari\MysqlHandler
+ * Class MyDbHandler
+ * @package detain\MydbHandler
  */
 class MyDbHandler extends AbstractProcessingHandler {
 

@@ -1,6 +1,6 @@
 <?php
 
-use MySQLHandler\MySQLHandler;
+use MyDbHandler\MyDbHandler;
 use Monolog\Logger;
 use PHPUnit\Framework\TestCase;
 use PHPUnit\DbUnit\TestCaseTrait;
@@ -51,9 +51,9 @@ class CreateTableTest extends TestCase
      * @param int $level
      */
     private function setupLogger($additionalFields = array(), $level = \Monolog\Logger::DEBUG, $timeFormat = 'U') {
-        $mySQLHandler = new MySQLHandler($this->pdo, $this->tableName, $additionalFields, $level, true, $timeFormat);
+        $myDBHandler = new MyDbHandler($this->pdo, $this->tableName, $additionalFields, $level, true, $timeFormat);
         $this->logger = new Logger("test_context");
-        $this->logger->pushHandler($mySQLHandler);
+        $this->logger->pushHandler($myDBHandler);
     }
 
     /**
