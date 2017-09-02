@@ -91,6 +91,7 @@ class MyDbHandler extends AbstractProcessingHandler {
 	 */
 	private function initialize()
 	{
+		/*
 		$this->db->query('CREATE TABLE IF NOT EXISTS `'.$this->table.'` (
 			id BIGINT(20) NOT NULL AUTO_INCREMENT PRIMARY KEY,
 			channel VARCHAR(255),
@@ -100,11 +101,12 @@ class MyDbHandler extends AbstractProcessingHandler {
 			INDEX(channel) USING HASH,
 			INDEX(level) USING HASH,
 			INDEX(time) USING BTREE
-		)');
+		)', __LINE__, __FILE__);
+		*/
 
 		//Read out actual columns
 		$actualFields = array();
-		$this->db->query('DESCRIBE `'.$this->table.'`');
+		$this->db->query('DESCRIBE `'.$this->table.'`', __LINE__, __FILE__);
 		while ($this->db->next_record(MYSQL_ASSOC))
 			$actualFields[] = $this->db->Record['Field'];
 
@@ -119,12 +121,12 @@ class MyDbHandler extends AbstractProcessingHandler {
 		//Remove columns
 		if (!empty($removedColumns))
 			foreach ($removedColumns as $c)
-				$this->db->query('ALTER TABLE `'.$this->table.'` DROP `'.$c.'`;');
+				$this->db->query('ALTER TABLE `'.$this->table.'` DROP `'.$c.'`;', __LINE__, __FILE__);
 
 		//Add columns
 		if (!empty($addedColumns))
 			foreach ($addedColumns as $c)
-				$this->db->query('ALTER TABLE `'.$this->table.'` add `'.$c.'` TEXT NULL DEFAULT NULL;');
+				$this->db->query('ALTER TABLE `'.$this->table.'` add `'.$c.'` TEXT NULL DEFAULT NULL;', __LINE__, __FILE__);
 
 		// If the dateFormat supplied doesn't match the existing format then change the
 		// time format to whatever was passed
@@ -159,7 +161,7 @@ class MyDbHandler extends AbstractProcessingHandler {
 			else
 				$fields[] = "'".$this->db->real_escape($values[$f])."'";
 		}
-		$this->db->query('INSERT INTO `' . $this->table . '` (' . implode(', ', $columns) . ') VALUES (' . implode(', ', $fields) . ')');
+		$this->db->query('INSERT INTO `' . $this->table . '` (' . implode(', ', $columns) . ') VALUES (' . implode(', ', $fields) . ')', __LINE__, __FILE__);
 	}
 
 
@@ -252,7 +254,7 @@ class MyDbHandler extends AbstractProcessingHandler {
 		$existingTimeFormat = '';
 
 		// Get the existing data type
-		$this->db->query("SELECT DATA_TYPE FROM INFORMATION_SCHEMA.COLUMNS WHERE table_name = '" . $this->table . "' AND COLUMN_NAME = 'time'");
+		$this->db->query("SELECT DATA_TYPE FROM INFORMATION_SCHEMA.COLUMNS WHERE table_name = '" . $this->table . "' AND COLUMN_NAME = 'time'", __LINE__, __FILE__);
 		$this->db->next_record(MYSQL_ASSOC);
 		$rs = $this->db->Record;
 		$existingColumnType = $rs['DATA_TYPE'];
@@ -288,7 +290,7 @@ class MyDbHandler extends AbstractProcessingHandler {
 	private function updateTimeFormat($oldFormat, $newFormat)
 	{
 		// Get the existing times
-		$this->db->query("SELECT id, time FROM {$this->table}");
+		$this->db->query("SELECT id, time FROM {$this->table}", __LINE__, __FILE__);
 		$existingRows = [];
 		while ($this->db->next_record(MYSQL_ASSOC)) {
 			$originalTime = DateTime::createFromFormat($oldFormat, $this->db->Record['time']);
@@ -296,10 +298,10 @@ class MyDbHandler extends AbstractProcessingHandler {
 			$existingRows[] = $this->db->Record;
 		}
 		// Change the column type
-		$this->db->query("UPDATE {$this->table} SET time = NULL");
-		$this->db->query("ALTER TABLE {$this->table} CHANGE time time " . $this->getTimeColumnType());
+		$this->db->query("UPDATE {$this->table} SET time = NULL", __LINE__, __FILE__);
+		$this->db->query("ALTER TABLE {$this->table} CHANGE time time " . $this->getTimeColumnType(), __LINE__, __FILE__);
 		// Re-apply the times in the new format
 		foreach ($existingRows as $row)
-			$this->db->query("UPDATE {$this->table} SET time = '{$row['time']}' WHERE id = {$row['id']}");
+			$this->db->query("UPDATE {$this->table} SET time = '{$row['time']}' WHERE id = {$row['id']}", __LINE__, __FILE__);
 	}
 }
