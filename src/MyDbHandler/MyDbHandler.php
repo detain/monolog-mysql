@@ -101,7 +101,7 @@ class MyDbHandler extends AbstractProcessingHandler {
 			INDEX(channel) USING HASH,
 			INDEX(level) USING HASH,
 			INDEX(time) USING BTREE
-		)', __LINE__, __FILE__);
+		) ENGINE=InnoDB', __LINE__, __FILE__);
 		*/
 
 		//Read out actual columns
