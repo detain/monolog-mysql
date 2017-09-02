@@ -7,12 +7,12 @@
     "authors": [
         {
             "name": "Joe Huss",
-            "email": "detain@interserver.net",
+            "email": "detain@interserver.net"
         }
     ],
     "require": {
         "monolog/monolog": ">1.4.0",
-        "detain/db_abstraction": "dev-master",
+        "detain/db_abstraction": "dev-master"
     },
     "autoload": {
         "psr-4": {"MyDbHandler\\": "src/MyDbHandler"}
