@@ -12,8 +12,7 @@
     ],
     "require": {
         "monolog/monolog": ">1.4.0",
-        "detain/db_abstraction": "dev-master",
-        "ext-pdo_mysql": "*"
+        "detain/db_abstraction": "dev-master"
     },
     "autoload": {
         "psr-4": {"MyDbHandler\\": "src/MyDbHandler"}
