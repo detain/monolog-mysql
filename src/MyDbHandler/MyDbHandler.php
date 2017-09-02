@@ -106,7 +106,7 @@ class MyDbHandler extends AbstractProcessingHandler {
 		$actualFields = array();
 		$this->db->query('DESCRIBE `'.$this->table.'`');
 		while ($this->db->next_record(MYSQL_ASSOC))
-			$actualFields[] = $db->Record['Field'];
+			$actualFields[] = $this->db->Record['Field'];
 
 		//Calculate changed entries
 		$removedColumns = array_diff(
@@ -290,10 +290,10 @@ class MyDbHandler extends AbstractProcessingHandler {
 		// Get the existing times
 		$this->db->query("SELECT id, time FROM {$this->table}");
 		$existingRows = [];
-		while ($db->next_record(MYSQL_ASSOC)) {
-			$originalTime = DateTime::createFromFormat($oldFormat, $db->Record['time']);
-			$db->Record['time'] = $originalTime->format($newFormat);
-			$existingRows[] = $db->Record;
+		while ($this->db->next_record(MYSQL_ASSOC)) {
+			$originalTime = DateTime::createFromFormat($oldFormat, $this->db->Record['time']);
+			$this->db->Record['time'] = $originalTime->format($newFormat);
+			$existingRows[] = $this->db->Record;
 		}
 		// Change the column type
 		$this->db->query("UPDATE {$this->table} SET time = NULL");
