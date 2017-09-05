@@ -150,9 +150,8 @@ class MyDbHandler extends AbstractProcessingHandler {
 		$columns = [];
 		$fields  = [];
 		foreach ($this->fields as $key => $f) {
-			if ($f == 'id') {
+			if ($f == 'id')
 				continue;
-			}
 			$columns[] = $f;
 			if (is_null($values[$f]))
 				$fields[] = 'NULL';
@@ -173,9 +172,8 @@ class MyDbHandler extends AbstractProcessingHandler {
 	 */
 	protected function write(array $record)
 	{
-		if (!$this->initialized) {
+		if (!$this->initialized)
 			$this->initialize();
-		}
 
 		/**
 		 * reset $fields with default values
@@ -187,9 +185,8 @@ class MyDbHandler extends AbstractProcessingHandler {
 		 * getting added to $record['extra']
 		 * @see https://github.com/Seldaek/monolog/blob/master/doc/02-handlers-formatters-processors.md
 		 */
-		if (isset($record['extra'])) {
+		if (isset($record['extra']))
 			$record['context'] = array_merge($record['context'], $record['extra']);
-		}
 
 		//'context' contains the array
 		$contentArray = array_merge(array(
