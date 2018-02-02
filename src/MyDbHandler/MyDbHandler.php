@@ -89,8 +89,7 @@ class MyDbHandler extends AbstractProcessingHandler {
 	/**
 	 * Initializes this handler by creating the table if it not exists
 	 */
-	private function initialize()
-	{
+	private function initialize() {
 		/*
 		$this->db->query('CREATE TABLE IF NOT EXISTS `'.$this->table.'` (
 			id BIGINT(20) NOT NULL AUTO_INCREMENT PRIMARY KEY,
@@ -144,23 +143,35 @@ class MyDbHandler extends AbstractProcessingHandler {
 	/**
 	 * Prepare the sql query depending on the fields that should be written to the database and runs it
 	 */
-	private function process($values)
-	{
-		//Prepare query
-		$columns = [];
-		$fields  = [];
-		foreach ($this->fields as $key => $f) {
-			if ($f == 'id')
-				continue;
-			$columns[] = $f;
-			if (is_null($values[$f]))
-				$fields[] = 'NULL';
-			elseif ($f != 'level' && is_numeric($values[$f]))
-				$fields[] = $values[$f];
-			else
-				$fields[] = "'".$this->db->real_escape($values[$f])."'";
-		}
-		$this->db->query('INSERT INTO `' . $this->table . '` (' . implode(', ', $columns) . ') VALUES (' . implode(', ', $fields) . ')', __LINE__, __FILE__);
+	private function process($values) {
+		/*if (class_exists('\MyAdmin\Orm\Log')) {
+			$log = new \MyAdmin\Orm\Log();
+			foreach ($this->fields as $key => $f) {
+				if ($f == 'id')
+					continue;
+				$call = 'set_'.$f;
+				error_log("$call setting {$values[$f]}");
+				$log->$call($values[$f]);
+			}
+			$log->save();
+		} else {
+		*/
+			//Prepare query
+			$columns = [];
+			$fields  = [];
+			foreach ($this->fields as $key => $f) {
+				if ($f == 'id')
+					continue;
+				$columns[] = $f;
+				if (is_null($values[$f]))
+					$fields[] = 'NULL';
+				elseif ($f != 'level' && is_numeric($values[$f]))
+					$fields[] = $values[$f];
+				else
+					$fields[] = "'".$this->db->real_escape($values[$f])."'";
+			}
+			$this->db->query('INSERT INTO `' . $this->table . '` (' . implode(', ', $columns) . ') VALUES (' . implode(', ', $fields) . ')', __LINE__, __FILE__);
+		/*}*/
 	}
 
 
@@ -170,8 +181,7 @@ class MyDbHandler extends AbstractProcessingHandler {
 	 * @param  $record[]
 	 * @return void
 	 */
-	protected function write(array $record)
-	{
+	protected function write(array $record) {
 		if (!$this->initialized)
 			$this->initialize();
 
@@ -220,8 +230,7 @@ class MyDbHandler extends AbstractProcessingHandler {
 	 *
 	 * @return string
 	 */
-	private function getTimeColumnType()
-	{
+	private function getTimeColumnType() {
 		$format = $this->dateFormat;
 
 		if ($format == "U") {
@@ -246,8 +255,7 @@ class MyDbHandler extends AbstractProcessingHandler {
 	 *
 	 * @return string|boolean
 	 */
-	private function getExistingTimeFormat()
-	{
+	private function getExistingTimeFormat() {
 		$existingTimeFormat = '';
 
 		// Get the existing data type
@@ -284,8 +292,7 @@ class MyDbHandler extends AbstractProcessingHandler {
 	 * @param  string $newFormat The format to update to
 	 * @return null
 	 */
-	private function updateTimeFormat($oldFormat, $newFormat)
-	{
+	private function updateTimeFormat($oldFormat, $newFormat) {
 		// Get the existing times
 		$this->db->query("SELECT id, time FROM {$this->table}", __LINE__, __FILE__);
 		$existingRows = [];
