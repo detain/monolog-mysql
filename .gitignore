@@ -2,4 +2,5 @@
 .idea
 vendor
 atlassian-ide-plugin.xml
-composer.lock
+composer.lock.idea/workspace.xml
+.idea/libraries
