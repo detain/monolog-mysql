@@ -155,7 +155,7 @@ class MyDbHandler extends AbstractProcessingHandler {
 			$columns[] = $f;
 			if (is_null($values[$f]))
 				$fields[] = 'NULL';
-			elseif (is_numeric($values[$f]))
+			elseif ($f != 'level' && is_numeric($values[$f]))
 				$fields[] = $values[$f];
 			else
 				$fields[] = "'".$this->db->real_escape($values[$f])."'";
