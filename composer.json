@@ -1,24 +1,25 @@
 {
-    "name": "detain/monolog-mydb",
-    "description": "A handler for Monolog that sends messages to the DB Abstraction class",
-    "keywords": ["log", "logging", "monolog", "mysql", "database"],
-    "homepage": "https://github.com/detain/monolog-mysql",
-    "license": "MIT",
-    "authors": [
-        {
-            "name": "Joe Huss",
-            "email": "detain@interserver.net"
-        }
-    ],
-    "require": {
-        "monolog/monolog": ">1.4.0",
-        "detain/db_abstraction": "dev-master"
-    },
-    "autoload": {
-        "psr-4": {"MyDbHandler\\": "src/MyDbHandler"}
-    },
-    "require-dev": {
-        "phpunit/phpunit": "^6.1",
-        "phpunit/dbunit": "^3.0"
-    }
+	"name": "detain/monolog-mydb",
+	"description": "A handler for Monolog that sends messages to the DB Abstraction class",
+	"keywords": ["log", "logging", "monolog", "mysql", "database"],
+	"homepage": "https://github.com/detain/monolog-mysql",
+	"license": "MIT",
+	"authors": [
+		{
+			"name": "Joe Huss",
+			"email": "detain@interserver.net"
+		}
+	],
+	"require": {
+		"monolog/monolog": ">1.4.0",
+		"detain/db_abstraction": "dev-master"
+	},
+	"autoload": {
+		"psr-4": {"MyDbHandler\\": "src/MyDbHandler"}
+	},
+	"require-dev": {
+		"phpunit/phpunit": "^6.1",
+		"phpunit/phpunit-mock-objects": "*",
+		"phpunit/dbunit": "^3.0"
+	}
 }
