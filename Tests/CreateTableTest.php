@@ -211,7 +211,7 @@ class CreateTableTest extends TestCase
 
 
 		//Now, log a warning
-		$this->logger->addWarning('The cat is dead', array('username' => 'Schroedinger'));
+		$this->logger->warning('The cat is dead', array('username' => 'Schroedinger'));
 
 		//There should be 6 entries now
 		$this->assertEquals(6, $this->getConnection()->getRowCount($this->tableName), "There should be six rows");
