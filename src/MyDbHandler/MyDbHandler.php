@@ -9,73 +9,73 @@ use MyDb\Mysqli\Db;
 use DateTime;
 
 /**
- * This class is a handler for Monolog, which can be used
- * to write records in a MySQL table
- *
- * Class MyDbHandler
- * @package detain\MydbHandler
- */
+* This class is a handler for Monolog, which can be used
+* to write records in a MySQL table
+*
+* Class MyDbHandler
+* @package detain\MydbHandler
+*/
 class MyDbHandler extends AbstractProcessingHandler
 {
 
 	/**
-	 * @var bool defines whether the MySQL connection is been initialized
-	 */
+	* @var bool defines whether the MySQL connection is been initialized
+	*/
 	private $initialized = false;
 
 	/**
-	 * @var Db Db object of database connection
-	 */
+	* @var Db Db object of database connection
+	*/
 	protected $db;
 
 	/**
-	 * @var string the table to store the logs in
-	 */
+	* @var string the table to store the logs in
+	*/
 	private $table = 'logs';
 
 	/**
-	 * @var array default fields that are stored in db
-	 */
+	* @var array default fields that are stored in db
+	*/
 	private $defaultFields = array('id', 'channel', 'level', 'message', 'time');
 
 	/**
-	 * @var string[] additional fields to be stored in the database
-	 *
-	 * For each field $field, an additional context field with the name $field
-	 * is expected along the message, and further the database needs to have these fields
-	 * as the values are stored in the column name $field.
-	 */
+	* @var string[] additional fields to be stored in the database
+	*
+	* For each field $field, an additional context field with the name $field
+	* is expected along the message, and further the database needs to have these fields
+	* as the values are stored in the column name $field.
+	*/
 	private $additionalFields = array();
 
 	/**
-	 * @var array
-	 */
+	* @var array
+	*/
 	private $fields           = array();
 
 	/**
-	 * @var string format the time should be stored in, defaults to seconds since epoch
-	 */
+	* @var string format the time should be stored in, defaults to seconds since epoch
+	*/
 	private $dateFormat;
 
 	/**
-	 * Constructor of this class, sets the Db and calls parent constructor
-	 *
-	 * DEBUG (100): Detailed debug information.
-	 * INFO (200): Interesting events. Examples: User logs in, SQL logs.
-	 * NOTICE (250): Normal but significant events.
-	 * WARNING (300): Exceptional occurrences that are not errors. Examples: Use of deprecated APIs, poor use of an API, undesirable things that are not necessarily wrong.
-	 * ERROR (400): Runtime errors that do not require immediate action but should typically be logged and monitored.
-	 * CRITICAL (500): Critical conditions. Example: Application component unavailable, unexpected exception.
-	 * ALERT (550): Action must be taken immediately. Example: Entire website down, database unavailable, etc. This should trigger the SMS alerts and wake you up.
-	 * EMERGENCY (600): Emergency: system is unusable.
-	 *
-	 * @param Db $db                  Db Connector for the database
-	 * @param bool $table               Table in the database to store the logs in
-	 * @param array $additionalFields   Additional Context Parameters to store in database
-	 * @param bool|int $level           Debug level which this handler should store
-	 * @param bool $bubble
-	 * @param string $dateFormat        Format the time should be stored in
-	 */
+	* Constructor of this class, sets the Db and calls parent constructor
+	*
+	* DEBUG (100): Detailed debug information.
+	* INFO (200): Interesting events. Examples: User logs in, SQL logs.
+	* NOTICE (250): Normal but significant events.
+	* WARNING (300): Exceptional occurrences that are not errors. Examples: Use of deprecated APIs, poor use of an API, undesirable things that are not necessarily wrong.
+	* ERROR (400): Runtime errors that do not require immediate action but should typically be logged and monitored.
+	* CRITICAL (500): Critical conditions. Example: Application component unavailable, unexpected exception.
+	* ALERT (550): Action must be taken immediately. Example: Entire website down, database unavailable, etc. This should trigger the SMS alerts and wake you up.
+	* EMERGENCY (600): Emergency: system is unusable.
+	*
+	* @param Db $db                  Db Connector for the database
+	* @param bool $table               Table in the database to store the logs in
+	* @param array $additionalFields   Additional Context Parameters to store in database
+	* @param bool|int $level           Debug level which this handler should store
+	* @param bool $bubble
+	* @param string $dateFormat        Format the time should be stored in
+	*/
 	public function __construct(Db $db = null, $table, $additionalFields = array(), $level = Logger::DEBUG, $bubble = true, $dateFormat = 'U')
 	{
 		if (!is_null($db)) {
@@ -90,20 +90,20 @@ class MyDbHandler extends AbstractProcessingHandler
 	}
 
 	/**
-	 * Initializes this handler by creating the table if it not exists
-	 */
+	* Initializes this handler by creating the table if it not exists
+	*/
 	private function initialize()
 	{
 		/*
 		$this->db->query('CREATE TABLE IF NOT EXISTS `'.$this->table.'` (
-			id BIGINT(20) NOT NULL AUTO_INCREMENT PRIMARY KEY,
-			channel VARCHAR(255),
-			level INTEGER,
-			message LONGTEXT,
-			time ' . $this->getTimeColumnType() . ',
-			INDEX(channel) USING HASH,
-			INDEX(level) USING HASH,
-			INDEX(time) USING BTREE
+		id BIGINT(20) NOT NULL AUTO_INCREMENT PRIMARY KEY,
+		channel VARCHAR(255),
+		level INTEGER,
+		message LONGTEXT,
+		time ' . $this->getTimeColumnType() . ',
+		INDEX(channel) USING HASH,
+		INDEX(level) USING HASH,
+		INDEX(time) USING BTREE
 		) ENGINE=InnoDB', __LINE__, __FILE__);
 		*/
 
@@ -152,20 +152,20 @@ class MyDbHandler extends AbstractProcessingHandler
 	}
 
 	/**
-	 * Prepare the sql query depending on the fields that should be written to the database and runs it
-	 */
+	* Prepare the sql query depending on the fields that should be written to the database and runs it
+	*/
 	private function process($values)
 	{
 		/*if (class_exists('\MyAdmin\Orm\Log')) {
-			$log = new \MyAdmin\Orm\Log();
-			foreach ($this->fields as $key => $f) {
-				if ($f == 'id')
-					continue;
-				$call = 'set_'.$f;
-				error_log("$call setting {$values[$f]}");
-				$log->$call($values[$f]);
-			}
-			$log->save();
+		$log = new \MyAdmin\Orm\Log();
+		foreach ($this->fields as $key => $f) {
+		if ($f == 'id')
+		continue;
+		$call = 'set_'.$f;
+		error_log("$call setting {$values[$f]}");
+		$log->$call($values[$f]);
+		}
+		$log->save();
 		} else {
 		*/
 		//Prepare query
@@ -190,27 +190,27 @@ class MyDbHandler extends AbstractProcessingHandler
 
 
 	/**
-	 * Writes the record down to the log of the implementing handler
-	 *
-	 * @param  $record[]
-	 * @return void
-	 */
-	protected function write(array $record)
+	* Writes the record down to the log of the implementing handler
+	*
+	* @param  $record[]
+	* @return void
+	*/
+	protected function write(array $record): void
 	{
 		if (!$this->initialized) {
 			$this->initialize();
 		}
 
 		/**
-		 * reset $fields with default values
-		 */
+		* reset $fields with default values
+		*/
 		$this->fields = $this->defaultFields;
 
 		/*
-		 * merge $record['context'] and $record['extra'] as additional info of Processors
-		 * getting added to $record['extra']
-		 * @see https://github.com/Seldaek/monolog/blob/master/doc/02-handlers-formatters-processors.md
-		 */
+		* merge $record['context'] and $record['extra'] as additional info of Processors
+		* getting added to $record['extra']
+		* @see https://github.com/Seldaek/monolog/blob/master/doc/02-handlers-formatters-processors.md
+		*/
 		if (isset($record['extra'])) {
 			$record['context'] = array_merge($record['context'], $record['extra']);
 		}
@@ -221,7 +221,7 @@ class MyDbHandler extends AbstractProcessingHandler
 			'level' => $record['level'],
 			'message' => $record['message'],
 			'time' => $record['datetime']->format($this->dateFormat)
-		), $record['context']);
+			), $record['context']);
 
 		// unset array keys that are passed put not defined to be stored, to prevent sql errors
 		foreach ($contentArray as $key => $context) {
@@ -243,10 +243,10 @@ class MyDbHandler extends AbstractProcessingHandler
 	}
 
 	/**
-	 * Returns the appropriate MySQL data type to use based on the dateFormat supplied
-	 *
-	 * @return string
-	 */
+	* Returns the appropriate MySQL data type to use based on the dateFormat supplied
+	*
+	* @return string
+	*/
 	private function getTimeColumnType()
 	{
 		$format = $this->dateFormat;
@@ -269,10 +269,10 @@ class MyDbHandler extends AbstractProcessingHandler
 	}
 
 	/**
-	 * Get the MySQL data type for the time column
-	 *
-	 * @return string|boolean
-	 */
+	* Get the MySQL data type for the time column
+	*
+	* @return string|boolean
+	*/
 	private function getExistingTimeFormat()
 	{
 		$existingTimeFormat = '';
@@ -305,12 +305,12 @@ class MyDbHandler extends AbstractProcessingHandler
 	}
 
 	/**
-	 * Updates the table to use a predefined format
-	 *
-	 * @param  string $oldFormat The existing format
-	 * @param  string $newFormat The format to update to
-	 * @return null
-	 */
+	* Updates the table to use a predefined format
+	*
+	* @param  string $oldFormat The existing format
+	* @param  string $newFormat The format to update to
+	* @return null
+	*/
 	private function updateTimeFormat($oldFormat, $newFormat)
 	{
 		// Get the existing times

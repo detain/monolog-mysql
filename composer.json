@@ -11,7 +11,7 @@
 		}
 	],
 	"require": {
-		"monolog/monolog": ">1.4.0",
+		"monolog/monolog": ">=2.0.0",
 		"detain/db_abstraction": "dev-master"
 	},
 	"autoload": {
