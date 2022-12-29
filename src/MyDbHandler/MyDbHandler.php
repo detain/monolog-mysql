@@ -194,7 +194,7 @@ class MyDbHandler extends AbstractProcessingHandler
     * @param  $record[]
     * @return void
     */
-    protected function write(Monolog\LogRecord $record): void
+    protected function write(\Monolog\LogRecord $record): void
     {
         if (!$this->initialized) {
             $this->initialize();
