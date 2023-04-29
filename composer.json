@@ -16,7 +16,7 @@
 	},
 	"autoload": {
 		"psr-4": {
-			"MyDbHandler\\": "src/"
+			"MyDbHandler\\": "src/MyDbHandler/"
 		}
 	},
 	"require-dev": {
