@@ -15,9 +15,10 @@
         "detain/db_abstraction": "dev-master"
     },
     "autoload": {
-        "psr-4": {"MyDbHandler\\": "src/MyDbHandler"}
-    }
-  ],
+               "psr-4": {
+                       "MyDbHandler\\": "src/"
+               }
+    },
   "require": {
     "php": "^7.2",
     "ext-pdo": "*",
@@ -30,14 +31,9 @@
     "psy/psysh": "^0.10.4",
     "fzaninotto/faker": "^1.9"
   },
-  "autoload": {
-    "psr-4": {
-      "MySQLHandler\\": "src"
-    }
-  },
   "autoload-dev": {
     "psr-4": {
-      "Tests\\": "tests"
+      "Tests\\": "tests/"
     }
   }
 }
