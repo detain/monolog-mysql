@@ -49,7 +49,7 @@ class CreateTableTest extends TestCase
      * @param array $additionalFields
      * @param int $level
      */
-    private function setupLogger($additionalFields = array(), $level = \Monolog\Logger::DEBUG, $timeFormat = 'U')
+    private function setupLogger($additionalFields = [], $level = \Monolog\Logger::DEBUG, $timeFormat = 'U')
     {
         $myDBHandler = new MyDbHandler($this->pdo, $this->tableName, $additionalFields, $level, true, $timeFormat);
         $this->logger = new Logger("test_context");
@@ -64,7 +64,7 @@ class CreateTableTest extends TestCase
     private function assertTableAgainstXMLDump($filename)
     {
         //Read out actual columns, except for time as it is not really testable
-        $actualFields = array();
+        $actualFields = [];
         $rs = $this->getConnection()->getConnection()->query('SELECT * FROM `'.$this->tableName.'` LIMIT 0');
         for ($i = 0; $i < $rs->columnCount(); $i++) {
             $col = $rs->getColumnMeta($i);
@@ -122,13 +122,13 @@ class CreateTableTest extends TestCase
      */
     public function testAddAdditionalField()
     {
-        $this->setupLogger(array('username', 'userid'));
+        $this->setupLogger(['username', 'userid']);
 
         //Currently, there should still be one entry
         $this->assertEquals(1, $this->getConnection()->getRowCount($this->tableName), "There should be one row now");
 
         //Write another test message
-        $this->logger->addAlert("User tried to access area 51 without permission", array('username' => 'waza-ari', 'userid' => 1337));
+        $this->logger->addAlert("User tried to access area 51 without permission", ['username' => 'waza-ari', 'userid' => 1337]);
 
         //Now there should be two rows
         $this->assertEquals(2, $this->getConnection()->getRowCount($this->tableName), "There should be two rows now");
@@ -143,14 +143,14 @@ class CreateTableTest extends TestCase
      */
     public function testAddEntryWithIncompleteAdditionalFields()
     {
-        $this->setupLogger(array('username', 'userid'));
+        $this->setupLogger(['username', 'userid']);
 
         //Should have two entries not and should still be same table as in previous test
         $this->assertEquals(2, $this->getConnection()->getRowCount($this->tableName), "There should be two rows now");
         $this->assertTableAgainstXMLDump('Tests/testAddAdditionalField.xml');
 
         //Log entry with user-id missing
-        $this->logger->addAlert("User tried to access area 51,5 without permission", array('username' => 'waza-ari'));
+        $this->logger->addAlert("User tried to access area 51,5 without permission", ['username' => 'waza-ari']);
 
         //Should be three entries now, the last one missing the userid (should be null, checked in dump)
         $this->assertEquals(3, $this->getConnection()->getRowCount($this->tableName), "There should be two rows now");
@@ -163,14 +163,14 @@ class CreateTableTest extends TestCase
     public function testRemoveAdditionalField()
     {
         //Drop userid now
-        $this->setupLogger(array('username'));
+        $this->setupLogger(['username']);
 
         //Should have three entries not and should still be same table as in previous test
         $this->assertEquals(3, $this->getConnection()->getRowCount($this->tableName), "There should be three rows now");
         $this->assertTableAgainstXMLDump('Tests/testAddEntryWithIncompleteAdditionalFields.xml');
 
         //Create new entry
-        $this->logger->addAlert("User tried to access area 52 without permission", array('username' => 'waza-ari'));
+        $this->logger->addAlert("User tried to access area 52 without permission", ['username' => 'waza-ari']);
 
         //Now, there should be four entries
         $this->assertEquals(4, $this->getConnection()->getRowCount($this->tableName), "There should be four rows now");
@@ -183,8 +183,8 @@ class CreateTableTest extends TestCase
      */
     public function testLogUnknownAdditionalField()
     {
-        $this->setupLogger(array('username'));
-        $this->logger->addEmergency("Schroedinger has opened the box!", array('username' => 'Schroedinger', 'item' => 'Cat'));
+        $this->setupLogger(['username']);
+        $this->logger->addEmergency("Schroedinger has opened the box!", ['username' => 'Schroedinger', 'item' => 'Cat']);
 
         //Now, there should be five entries
         $this->assertEquals(5, $this->getConnection()->getRowCount($this->tableName), "There should be five rows");
@@ -196,14 +196,14 @@ class CreateTableTest extends TestCase
      */
     public function testSeverityHandling()
     {
-        $this->setupLogger(array('username'), \Monolog\Logger::WARNING);
+        $this->setupLogger(['username'], \Monolog\Logger::WARNING);
 
         //There should be 5 entries, should still be the outcome of last test
         $this->assertEquals(5, $this->getConnection()->getRowCount($this->tableName), "There should be five rows");
         $this->assertTableAgainstXMLDump('Tests/testLogUnknownAdditionalField.xml');
 
         //Add Entry with lower severity
-        $this->logger->addInfo("Schroedinger found a cat in the box!", array('username' => 'Schroedinger'));
+        $this->logger->addInfo("Schroedinger found a cat in the box!", ['username' => 'Schroedinger']);
 
         //Nothing should have changed
         $this->assertEquals(5, $this->getConnection()->getRowCount($this->tableName), "There should be five rows");
@@ -211,7 +211,7 @@ class CreateTableTest extends TestCase
 
 
         //Now, log a warning
-        $this->logger->warning('The cat is dead', array('username' => 'Schroedinger'));
+        $this->logger->warning('The cat is dead', ['username' => 'Schroedinger']);
 
         //There should be 6 entries now
         $this->assertEquals(6, $this->getConnection()->getRowCount($this->tableName), "There should be six rows");
@@ -236,7 +236,7 @@ class CreateTableTest extends TestCase
      */
     public function testChangeTimeFormat()
     {
-        $this->setupLogger(array('username'), \Monolog\Logger::DEBUG, 'Y-m-d');
+        $this->setupLogger(['username'], \Monolog\Logger::DEBUG, 'Y-m-d');
 
         // Verify current number
         //There should be 6 entries now
@@ -244,7 +244,7 @@ class CreateTableTest extends TestCase
         $this->assertTableAgainstXMLDump('Tests/testSeverityHandling.xml');
 
         // Add logging entry
-        $this->logger->debug('User just took a cookie from the cookie jar!', array('username' => 'Steve'));
+        $this->logger->debug('User just took a cookie from the cookie jar!', ['username' => 'Steve']);
 
         // TODO: Verify new format
 

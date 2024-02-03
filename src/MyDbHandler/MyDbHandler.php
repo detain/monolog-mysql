@@ -35,7 +35,7 @@ class MyDbHandler extends AbstractProcessingHandler
     /**
     * @var array default fields that are stored in db
     */
-    private $defaultFields = array('id', 'channel', 'level', 'message', 'time');
+    private $defaultFields = ['id', 'channel', 'level', 'message', 'time'];
 
     /**
     * @var string[] additional fields to be stored in the database
@@ -44,12 +44,12 @@ class MyDbHandler extends AbstractProcessingHandler
     * is expected along the message, and further the database needs to have these fields
     * as the values are stored in the column name $field.
     */
-    private $additionalFields = array();
+    private $additionalFields = [];
 
     /**
     * @var array
     */
-    private $fields           = array();
+    private $fields           = [];
 
     /**
     * @var string format the time should be stored in, defaults to seconds since epoch
@@ -75,7 +75,7 @@ class MyDbHandler extends AbstractProcessingHandler
     * @param bool $bubble
     * @param string $dateFormat        Format the time should be stored in
     */
-    public function __construct(Db $db = null, $table, $additionalFields = array(), $level = Logger::DEBUG, $bubble = true, $dateFormat = 'U')
+    public function __construct(Db $db = null, $table, $additionalFields = [], $level = Logger::DEBUG, $bubble = true, $dateFormat = 'U')
     {
         if (!is_null($db)) {
             $this->db = $db;
@@ -107,7 +107,7 @@ class MyDbHandler extends AbstractProcessingHandler
         */
 
         //Read out actual columns
-        $actualFields = array();
+        $actualFields = [];
         $this->db->query('DESCRIBE `'.$this->table.'`', __LINE__, __FILE__);
         while ($this->db->next_record(MYSQL_ASSOC)) {
             $actualFields[] = $this->db->Record['Field'];
@@ -215,12 +215,12 @@ class MyDbHandler extends AbstractProcessingHandler
         }
 
         //'context' contains the array
-        $contentArray = array_merge(array(
+        $contentArray = array_merge([
             'channel' => $record['channel'],
             'level' => $record['level'],
             'message' => $record['message'],
             'time' => $record['datetime']->format($this->dateFormat)
-            ), $record['context']);
+            ], $record['context']);
 
         // unset array keys that are passed put not defined to be stored, to prevent sql errors
         foreach ($contentArray as $key => $context) {
