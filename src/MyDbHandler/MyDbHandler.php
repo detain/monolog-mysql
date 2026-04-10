@@ -2,7 +2,8 @@
 
 namespace MyDbHandler;
 
-use Monolog\Logger;
+use Monolog\Level;
+use Monolog\LogRecord;
 use Monolog\Handler\AbstractProcessingHandler;
 use MyDb\Generic;
 use MyDb\Mysqli\Db;
@@ -75,7 +76,7 @@ class MyDbHandler extends AbstractProcessingHandler
     * @param bool $bubble
     * @param string $dateFormat        Format the time should be stored in
     */
-    public function __construct(Db $db = null, $table, $additionalFields = [], $level = Logger::DEBUG, $bubble = true, $dateFormat = 'U')
+    public function __construct(Db $db = null, $table, $additionalFields = [], int|string|Level $level = Level::Debug, $bubble = true, $dateFormat = 'U')
     {
         if (!is_null($db)) {
             $this->db = $db;
@@ -194,7 +195,7 @@ class MyDbHandler extends AbstractProcessingHandler
     * @param  $record[]
     * @return void
     */
-    protected function write(array $record): void
+    protected function write(LogRecord $record): void
     {
         if (!$this->initialized) {
             $this->initialize();
@@ -206,21 +207,19 @@ class MyDbHandler extends AbstractProcessingHandler
         $this->fields = $this->defaultFields;
 
         /*
-        * merge $record['context'] and $record['extra'] as additional info of Processors
-        * getting added to $record['extra']
+        * merge $record->context and $record->extra as additional info of Processors
+        * getting added to $record->extra
         * @see https://github.com/Seldaek/monolog/blob/master/doc/02-handlers-formatters-processors.md
         */
-        if (isset($record['extra'])) {
-            $record['context'] = array_merge($record['context'], $record['extra']);
-        }
+        $context = array_merge($record->context, $record->extra);
 
         //'context' contains the array
         $contentArray = array_merge([
-            'channel' => $record['channel'],
-            'level' => $record['level'],
-            'message' => $record['message'],
-            'time' => $record['datetime']->format($this->dateFormat)
-            ], $record['context']);
+            'channel' => $record->channel,
+            'level' => $record->level->value,
+            'message' => $record->message,
+            'time' => $record->datetime->format($this->dateFormat)
+            ], $context);
 
         // unset array keys that are passed put not defined to be stored, to prevent sql errors
         foreach ($contentArray as $key => $context) {
