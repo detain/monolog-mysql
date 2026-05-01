@@ -1,6 +1,6 @@
 {
 	"name": "detain/monolog-mydb",
-	"description": "A handler for Monolog that sends messages to the DB Abstraction class",
+	"description": "A Monolog handler that writes log records to a MySQL table via the detain/db_abstraction layer.",
 	"keywords": ["log", "logging", "monolog", "mysql", "database"],
 	"homepage": "https://github.com/detain/monolog-mysql",
 	"license": "MIT",
@@ -11,7 +11,9 @@
 		}
 	],
 	"require": {
-		"monolog/monolog": "*",
+		"php": ">=8.2",
+		"ext-mysqli": "*",
+		"monolog/monolog": "^2.0 || ^3.0",
 		"detain/db_abstraction": "dev-master"
 	},
 	"autoload": {
@@ -20,8 +22,6 @@
 		}
 	},
 	"require-dev": {
-		"phpunit/phpunit": "^6.1",
-		"phpunit/phpunit-mock-objects": "*",
-		"phpunit/dbunit": "^3.0"
+		"phpunit/phpunit": "^9.5"
 	}
 }

@@ -1,10 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<phpunit bootstrap="vendor/autoload.php" colors="true">
+<phpunit bootstrap="vendor/autoload.php"
+         colors="true"
+         convertDeprecationsToExceptions="false">
     <php>
-        <var name="db_dsn" value="mysql:dbname=monolog_mysql_test;host=localhost"/>
+        <var name="db_host"     value="localhost"/>
         <var name="db_username" value="root"/>
         <var name="db_password" value=""/>
+        <var name="db_name"     value="monolog_mysql_test"/>
     </php>
 
     <testsuites>

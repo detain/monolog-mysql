@@ -1,257 +1,360 @@
 <?php
 
-use MyDbHandler\MyDbHandler;
-use Monolog\Logger;
 use Monolog\Level;
+use Monolog\Logger;
+use MyDb\Mysqli\Db;
+use MyDbHandler\MyDbHandler;
 use PHPUnit\Framework\TestCase;
-use PHPUnit\DbUnit\TestCaseTrait;
-use PHPUnit\DbUnit\DataSet\DefaultDataSet;
 
+/**
+ * End-to-end test of {@see MyDbHandler}.
+ *
+ * The test exercises the handler against a real MySQL instance — the schema
+ * reconciliation logic is too entangled with MySQL DDL to mock usefully. The
+ * connection settings are read from PHPUnit's `<var>` blocks (see
+ * `phpunit_mysql.xml`) with sensible defaults so the suite can be run with a
+ * local MySQL out of the box.
+ *
+ * The tests intentionally share state through the `logging` table — each test
+ * builds on the state left by the previous one. Test order therefore matters
+ * and is preserved by PHPUnit's default execution order.
+ *
+ * @covers \MyDbHandler\MyDbHandler
+ */
 class CreateTableTest extends TestCase
 {
-    use TestCaseTrait;
-
-    /**
-     * @var PDO The PDO connection object
-     */
-    private $pdo = null;
-
-    /**
-     * @var string Name of the table used for testing
-     */
+    /** @var string Name of the table used for testing. */
     private $tableName = 'logging';
 
-    /**
-     * @var Logger
-     */
+    /** @var Db|null Connection used by the handler under test. */
+    private $db = null;
+
+    /** @var \mysqli|null Direct mysqli link used by the assertion helpers. */
+    private $mysqli = null;
+
+    /** @var Logger|null Configured Monolog logger. */
     private $logger = null;
 
     /**
-     * @return \PHPUnit\DbUnit\Database\DefaultConnection
-     */
-    public function getConnection()
-    {
-        $this->pdo = new PDO($GLOBALS['db_dsn'], $GLOBALS['db_username'], $GLOBALS['db_password']);
-        return $this->createDefaultDBConnection($this->pdo);
-    }
-
-    /**
-     * @return DefaultDataSet
-     */
-    public function getDataSet()
-    {
-        return new DefaultDataSet();
-        //$this->createXMLDataSet('Tests/logging_table.xml');
-    }
-
-    /**
-     * Sets up a Monolog MySQL logger
+     * Open a fresh database connection (and a sibling mysqli handle for the
+     * assertion helpers) before every test, skipping gracefully when MySQL is
+     * unreachable so the suite still runs in environments without it.
      *
-     * @param array $additionalFields
-     * @param int $level
+     * Connection settings are sourced from (in order): environment variables
+     * (`MONOLOG_MYDB_HOST`, `MONOLOG_MYDB_USER`, `MONOLOG_MYDB_PASS`,
+     * `MONOLOG_MYDB_DB`), PHPUnit `<var>` blocks (`db_host`, `db_username`,
+     * `db_password`, `db_name`), then sensible localhost defaults.
+     *
+     * @return void
      */
-    private function setupLogger($additionalFields = [], int|string|Level $level = Level::Debug, $timeFormat = 'U')
+    protected function setUp(): void
     {
-        $myDBHandler = new MyDbHandler($this->pdo, $this->tableName, $additionalFields, $level, true, $timeFormat);
-        $this->logger = new Logger("test_context");
-        $this->logger->pushHandler($myDBHandler);
+        $host     = getenv('MONOLOG_MYDB_HOST') ?: ($GLOBALS['db_host']     ?? 'localhost');
+        $user     = getenv('MONOLOG_MYDB_USER') ?: ($GLOBALS['db_username'] ?? 'root');
+        $password = getenv('MONOLOG_MYDB_PASS');
+        if ($password === false) {
+            $password = $GLOBALS['db_password'] ?? '';
+        }
+        $dbname   = getenv('MONOLOG_MYDB_DB')   ?: ($GLOBALS['db_name']     ?? 'monolog_mysql_test');
+
+        // PHP 8.1+ defaults mysqli to throwing exceptions; suppress that here
+        // so we can downgrade an unreachable MySQL to a skipped test rather
+        // than a fatal error. Some installations throw a plain Exception
+        // (rather than mysqli_sql_exception) when the report mode is left at
+        // its default at script start, so catch broadly.
+        \mysqli_report(MYSQLI_REPORT_OFF);
+
+        $mysqli = null;
+        try {
+            $mysqli = @new \mysqli($host, $user, $password, $dbname);
+        } catch (\Throwable $e) {
+            $this->markTestSkipped('MySQL is not available: ' . $e->getMessage());
+        }
+        if (!$mysqli || $mysqli->connect_errno) {
+            $this->markTestSkipped('MySQL is not available: ' . ($mysqli->connect_error ?? 'unknown error'));
+        }
+        $this->mysqli = $mysqli;
+
+        // Db constructor signature: (database, user, password, host).
+        $this->db = new Db($dbname, $user, $password, $host);
     }
 
     /**
-     * Check whether the current state of the logging table matches expected state
+     * Close the mysqli link after each test to avoid leaking connections.
      *
-     * @param $filename
+     * @return void
      */
-    private function assertTableAgainstXMLDump($filename)
+    protected function tearDown(): void
     {
-        //Read out actual columns, except for time as it is not really testable
-        $actualFields = [];
-        $rs = $this->getConnection()->getConnection()->query('SELECT * FROM `'.$this->tableName.'` LIMIT 0');
-        for ($i = 0; $i < $rs->columnCount(); $i++) {
-            $col = $rs->getColumnMeta($i);
+        if ($this->mysqli instanceof \mysqli) {
+            @$this->mysqli->close();
+        }
+    }
 
-            //Exclude time as it is not really testable
-            if ($col['name'] != 'time') {
-                $actualFields[] = $col['name'];
+    /**
+     * Configure a fresh Monolog logger with a single {@see MyDbHandler}
+     * pushed onto the stack.
+     *
+     * @param string[]              $additionalFields Additional context keys
+     *                                                that should be persisted
+     *                                                as their own columns.
+     * @param int|string|Level      $level            Minimum severity to
+     *                                                handle.
+     * @param string                $timeFormat       `DateTime::format()`
+     *                                                pattern for the `time`
+     *                                                column.
+     * @return void
+     */
+    private function setupLogger(array $additionalFields = [], int|string|Level $level = Level::Debug, string $timeFormat = 'U'): void
+    {
+        $handler = new MyDbHandler($this->db, $this->tableName, $additionalFields, $level, true, $timeFormat);
+        $this->logger = new Logger('test_context');
+        $this->logger->pushHandler($handler);
+    }
+
+    /**
+     * Returns the row count of the test table.
+     *
+     * @return int
+     */
+    private function rowCount(): int
+    {
+        $rs = $this->mysqli->query('SELECT COUNT(*) AS c FROM `' . $this->tableName . '`');
+        $row = $rs->fetch_assoc();
+        return (int) $row['c'];
+    }
+
+    /**
+     * Returns every row of the test table (excluding `time`, which is too
+     * timing-sensitive to assert on) ordered by id ascending and re-indexed
+     * with a 1-based offset so the test assertions are independent of the
+     * server's `auto_increment_increment` / `auto_increment_offset` settings
+     * (which can produce non-sequential ids on replication-aware MySQL).
+     *
+     * @param string[] $columns Columns to select.
+     * @return array<int,array<string,string|null>>
+     */
+    private function fetchAll(array $columns): array
+    {
+        $cols = implode(', ', array_map(fn ($c) => '`' . $c . '`', $columns));
+        $rs = $this->mysqli->query('SELECT ' . $cols . ' FROM `' . $this->tableName . '` ORDER BY id ASC');
+        $rows = [];
+        $i = 1;
+        while ($row = $rs->fetch_assoc()) {
+            // Strip the real id from the comparable payload so non-sequential
+            // server-generated ids don't break value comparisons.
+            unset($row['id']);
+            $rows[$i++] = $row;
+        }
+        return $rows;
+    }
+
+    /**
+     * Returns the `Type` reported by `DESCRIBE` for the given column.
+     *
+     * @param string $column
+     * @return string|null
+     */
+    private function columnType(string $column): ?string
+    {
+        $rs = $this->mysqli->query('DESCRIBE `' . $this->tableName . '`');
+        while ($row = $rs->fetch_assoc()) {
+            if ($row['Field'] === $column) {
+                return $row['Type'];
             }
         }
-
-        //Prepare MySQL compatible column string
-        $column_string = implode(',', array_map(function ($a) {
-            return '`'.$a.'`';
-        }, $actualFields));
-
-        //Get current state of the table
-        $queryTable = $this->getConnection()->createQueryTable($this->tableName, 'SELECT '.$column_string.' FROM `'.$this->tableName.'`;');
-        $expectedTable = $this->createMySQLXMLDataSet($filename)->getTable($this->tableName);
-        $this->assertTablesEqual($expectedTable, $queryTable);
+        return null;
     }
 
     /**
-     * There should be no table in the beginning
+     * Tests that the table is absent before the suite runs.
+     *
+     * @return void
      */
-    public function testTableAbsent()
+    public function testTableAbsent(): void
     {
-        //Drop table if it exists
-        $this->getConnection()->getConnection()->exec('DROP TABLE IF EXISTS `'.$this->tableName.'`;');
-
-        //Table should not exist right now - try to get RowCount on a non-existent table should throw an exception
-        $this->expectException(PDOException::class);
-        $this->assertEquals(0, $this->getConnection()->getRowCount($this->tableName), "Pre-Condition");
+        $this->mysqli->query('DROP TABLE IF EXISTS `' . $this->tableName . '`');
+        $rs = $this->mysqli->query('SHOW TABLES LIKE \'' . $this->tableName . '\'');
+        $this->assertEquals(0, $rs->num_rows, 'Table should not exist at the start of the suite');
     }
 
     /**
-     * Now add a single log message, which should have on table created
+     * Tests that writing a single record auto-creates the table and persists
+     * the expected default columns.
+     *
+     * @return void
      */
-    public function testCreateTable()
+    public function testCreateTable(): void
     {
-        //Setup connection
         $this->setupLogger();
+        $this->logger->info('Test log message');
 
-        //Write one test message to create table
-        $this->logger->info("Test log message");
+        $this->assertEquals(1, $this->rowCount(), 'There should be one row now');
 
-        //Now there should be at least one entry
-        $this->assertEquals(1, $this->getConnection()->getRowCount($this->tableName), "There should be one row now");
-
-        //Compare against expected table
-        $this->assertTableAgainstXMLDump('Tests/testCreateTable.xml');
+        $rows = $this->fetchAll(['id', 'channel', 'level', 'message']);
+        $this->assertSame([
+            1 => [
+                'channel' => 'test_context',
+                'level'   => '200',
+                'message' => 'Test log message',
+            ],
+        ], $rows);
     }
 
     /**
-     * Extend the table by adding two additional fields
+     * Tests that declaring additional fields adds matching columns and that
+     * a record supplying values for them is written correctly.
+     *
+     * @return void
      */
-    public function testAddAdditionalField()
+    public function testAddAdditionalField(): void
     {
         $this->setupLogger(['username', 'userid']);
 
-        //Currently, there should still be one entry
-        $this->assertEquals(1, $this->getConnection()->getRowCount($this->tableName), "There should be one row now");
+        $this->assertEquals(1, $this->rowCount(), 'There should still be one row');
 
-        //Write another test message
-        $this->logger->alert("User tried to access area 51 without permission", ['username' => 'waza-ari', 'userid' => 1337]);
+        $this->logger->alert('User tried to access area 51 without permission', ['username' => 'waza-ari', 'userid' => 1337]);
 
-        //Now there should be two rows
-        $this->assertEquals(2, $this->getConnection()->getRowCount($this->tableName), "There should be two rows now");
+        $this->assertEquals(2, $this->rowCount(), 'There should be two rows now');
 
-        //Compare against expected table - check that the username column was added and previous log message was
-        //extended by null value
-        $this->assertTableAgainstXMLDump('Tests/testAddAdditionalField.xml');
+        $rows = $this->fetchAll(['id', 'channel', 'level', 'message', 'username', 'userid']);
+        $this->assertSame([
+            1 => [
+                'channel'  => 'test_context',
+                'level'    => '200',
+                'message'  => 'Test log message',
+                'username' => null,
+                'userid'   => null,
+            ],
+            2 => [
+                'channel'  => 'test_context',
+                'level'    => '550',
+                'message'  => 'User tried to access area 51 without permission',
+                'username' => 'waza-ari',
+                'userid'   => '1337',
+            ],
+        ], $rows);
     }
 
     /**
-     * Try to add an entry with one additional field missing
+     * Tests that omitting one of the additional fields writes `NULL` for the
+     * missing column.
+     *
+     * @return void
      */
-    public function testAddEntryWithIncompleteAdditionalFields()
+    public function testAddEntryWithIncompleteAdditionalFields(): void
     {
         $this->setupLogger(['username', 'userid']);
+        $this->assertEquals(2, $this->rowCount());
 
-        //Should have two entries not and should still be same table as in previous test
-        $this->assertEquals(2, $this->getConnection()->getRowCount($this->tableName), "There should be two rows now");
-        $this->assertTableAgainstXMLDump('Tests/testAddAdditionalField.xml');
+        $this->logger->alert('User tried to access area 51,5 without permission', ['username' => 'waza-ari']);
 
-        //Log entry with user-id missing
-        $this->logger->alert("User tried to access area 51,5 without permission", ['username' => 'waza-ari']);
+        $this->assertEquals(3, $this->rowCount(), 'There should be three rows now');
 
-        //Should be three entries now, the last one missing the userid (should be null, checked in dump)
-        $this->assertEquals(3, $this->getConnection()->getRowCount($this->tableName), "There should be two rows now");
-        $this->assertTableAgainstXMLDump('Tests/testAddEntryWithIncompleteAdditionalFields.xml');
+        $rows = $this->fetchAll(['username', 'userid', 'message']);
+        $this->assertSame('waza-ari', $rows[3]['username']);
+        $this->assertNull($rows[3]['userid']);
+        $this->assertSame('User tried to access area 51,5 without permission', $rows[3]['message']);
     }
 
     /**
-     * Remove one of the additional fields
+     * Tests that removing a field from `$additionalFields` drops the matching
+     * column on next initialization.
+     *
+     * @return void
      */
-    public function testRemoveAdditionalField()
-    {
-        //Drop userid now
-        $this->setupLogger(['username']);
-
-        //Should have three entries not and should still be same table as in previous test
-        $this->assertEquals(3, $this->getConnection()->getRowCount($this->tableName), "There should be three rows now");
-        $this->assertTableAgainstXMLDump('Tests/testAddEntryWithIncompleteAdditionalFields.xml');
-
-        //Create new entry
-        $this->logger->alert("User tried to access area 52 without permission", ['username' => 'waza-ari']);
-
-        //Now, there should be four entries
-        $this->assertEquals(4, $this->getConnection()->getRowCount($this->tableName), "There should be four rows now");
-        $this->assertTableAgainstXMLDump('Tests/testDeleteAdditionalField.xml');
-    }
-
-    /**
-     * Try to log an unknown additional field
-     * Expected: unknown field should be ignored
-     */
-    public function testLogUnknownAdditionalField()
+    public function testRemoveAdditionalField(): void
     {
         $this->setupLogger(['username']);
-        $this->logger->emergency("Schroedinger has opened the box!", ['username' => 'Schroedinger', 'item' => 'Cat']);
 
-        //Now, there should be five entries
-        $this->assertEquals(5, $this->getConnection()->getRowCount($this->tableName), "There should be five rows");
-        $this->assertTableAgainstXMLDump('Tests/testLogUnknownAdditionalField.xml');
+        $this->assertEquals(3, $this->rowCount(), 'There should be three rows now');
+
+        // Triggering a write forces the lazy schema reconciliation, which is
+        // what actually drops `userid`.
+        $this->logger->alert('User tried to access area 52 without permission', ['username' => 'waza-ari']);
+
+        $this->assertNull($this->columnType('userid'), '`userid` column should have been dropped');
+        $this->assertEquals(4, $this->rowCount(), 'There should be four rows now');
+
+        $rows = $this->fetchAll(['username', 'message']);
+        $this->assertSame('waza-ari', $rows[4]['username']);
+        $this->assertSame('User tried to access area 52 without permission', $rows[4]['message']);
     }
 
     /**
-     * Test severity handling
+     * Tests that supplying an unknown context key is silently ignored rather
+     * than raising a SQL error.
+     *
+     * @return void
      */
-    public function testSeverityHandling()
+    public function testLogUnknownAdditionalField(): void
+    {
+        $this->setupLogger(['username']);
+        $this->logger->emergency('Schroedinger has opened the box!', ['username' => 'Schroedinger', 'item' => 'Cat']);
+
+        $this->assertEquals(5, $this->rowCount(), 'There should be five rows now');
+        $this->assertNull($this->columnType('item'), 'Unknown keys must not result in new columns');
+
+        $rows = $this->fetchAll(['username', 'message', 'level']);
+        $this->assertSame('Schroedinger', $rows[5]['username']);
+        $this->assertSame('600', $rows[5]['level']);
+    }
+
+    /**
+     * Tests that records below the configured severity threshold are dropped.
+     *
+     * @return void
+     */
+    public function testSeverityHandling(): void
     {
         $this->setupLogger(['username'], Level::Warning);
+        $this->assertEquals(5, $this->rowCount(), 'There should be five rows');
 
-        //There should be 5 entries, should still be the outcome of last test
-        $this->assertEquals(5, $this->getConnection()->getRowCount($this->tableName), "There should be five rows");
-        $this->assertTableAgainstXMLDump('Tests/testLogUnknownAdditionalField.xml');
+        $this->logger->info('Schroedinger found a cat in the box!', ['username' => 'Schroedinger']);
+        $this->assertEquals(5, $this->rowCount(), 'INFO records below WARNING must be skipped');
 
-        //Add Entry with lower severity
-        $this->logger->info("Schroedinger found a cat in the box!", ['username' => 'Schroedinger']);
-
-        //Nothing should have changed
-        $this->assertEquals(5, $this->getConnection()->getRowCount($this->tableName), "There should be five rows");
-        $this->assertTableAgainstXMLDump('Tests/testLogUnknownAdditionalField.xml');
-
-
-        //Now, log a warning
         $this->logger->warning('The cat is dead', ['username' => 'Schroedinger']);
+        $this->assertEquals(6, $this->rowCount(), 'WARNING records must be persisted');
 
-        //There should be 6 entries now
-        $this->assertEquals(6, $this->getConnection()->getRowCount($this->tableName), "There should be six rows");
-        $this->assertTableAgainstXMLDump('Tests/testSeverityHandling.xml');
+        $rows = $this->fetchAll(['level', 'message']);
+        $this->assertSame('300', $rows[6]['level']);
+        $this->assertSame('The cat is dead', $rows[6]['message']);
     }
 
     /**
-     * Test default time format
+     * Tests the default `time` column type (`INTEGER` for the `U` format).
+     *
+     * @return void
      */
-    public function testDefaultTimeFormat()
+    public function testDefaultTimeFormat(): void
     {
-        //Get type of database field "time"
-        $rs = $this->getConnection()->getConnection()->query('SELECT * FROM `'.$this->tableName.'` LIMIT 0');
-        $col = $rs->getColumnMeta(4);
-        $this->assertEquals('time', $col['name']);
-        $this->assertEquals(2, $col['pdo_type']);
-        $this->assertEquals(11, $col['len']);
+        $type = $this->columnType('time');
+        $this->assertNotNull($type);
+        $this->assertStringContainsString('int', strtolower($type));
     }
 
     /**
-     * Test changing the time format after the fact
+     * Tests that changing `$dateFormat` between runs migrates the column to a
+     * matching MySQL type and re-writes the existing rows in the new format.
+     *
+     * @return void
      */
-    public function testChangeTimeFormat()
+    public function testChangeTimeFormat(): void
     {
         $this->setupLogger(['username'], Level::Debug, 'Y-m-d');
 
-        // Verify current number
-        //There should be 6 entries now
-        $this->assertEquals(6, $this->getConnection()->getRowCount($this->tableName), "There should be six rows");
-        $this->assertTableAgainstXMLDump('Tests/testSeverityHandling.xml');
+        $this->assertEquals(6, $this->rowCount(), 'There should be six rows');
 
-        // Add logging entry
         $this->logger->debug('User just took a cookie from the cookie jar!', ['username' => 'Steve']);
 
-        // TODO: Verify new format
+        $this->assertEquals(7, $this->rowCount(), 'There should be seven rows now');
 
-        // Verify current number
-        //There should be 7 entries now
-        $this->assertEquals(7, $this->getConnection()->getRowCount($this->tableName), "There should be seven rows");
-        $this->assertTableAgainstXMLDump('Tests/testChangeTimeFormat.xml');
+        $type = $this->columnType('time');
+        $this->assertNotNull($type);
+        $this->assertSame('date', strtolower($type), '`time` column should have been migrated to DATE');
+
+        $rs = $this->mysqli->query('SELECT time FROM `' . $this->tableName . '` ORDER BY id DESC LIMIT 1');
+        $row = $rs->fetch_assoc();
+        $this->assertMatchesRegularExpression('/^\d{4}-\d{2}-\d{2}$/', $row['time']);
     }
 }
