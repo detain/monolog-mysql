@@ -1,7 +1,26 @@
 {
     "name": "detain/monolog-mydb",
     "description": "A handler for Monolog that sends messages to MySQL",
-    "keywords": ["log", "logging", "monolog", "mysql", "database"],
+    "keywords": [
+        "log",
+        "logging",
+        "monolog",
+        "monolog-handler",
+        "mysql",
+        "mysqli",
+        "pdo",
+        "database",
+        "sql",
+        "syslog",
+        "psr-3",
+        "handler",
+        "logger",
+        "alerting",
+        "monitoring",
+        "mysql-logger",
+        "php",
+        "php-library"
+    ],
     "homepage": "https://github.com/detain/monolog-mysql",
     "license": "MIT",
     "authors": [
