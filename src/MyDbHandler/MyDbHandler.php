@@ -294,7 +294,21 @@ class MyDbHandler extends AbstractProcessingHandler
     private function writeRecord(LogRecord $record): void
     {
         if (!$this->initialized) {
-            $this->initialize();
+            /*
+             * initialize() issues CREATE TABLE / ALTER TABLE, and DDL causes an
+             * implicit COMMIT in MySQL -- including CREATE TABLE IF NOT EXISTS
+             * when the table already exists. Since this handler shares the
+             * application's connection, running it during a caller's
+             * transaction would silently commit that transaction. Defer instead:
+             * the schema check happens on the next log write outside a
+             * transaction, and the INSERT below still works because the table
+             * already exists in every case except a genuinely first-ever write.
+             */
+            if (method_exists($this->db, 'inTransaction') && $this->db->inTransaction()) {
+                error_log('MyDbHandler: deferring schema initialization, a transaction is open on the shared connection');
+            } else {
+                $this->initialize();
+            }
         }
 
         // Reset the working field list to the full set of known columns.
