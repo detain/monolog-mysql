@@ -57,6 +57,7 @@ $logger->pushHandler($handler);
 - Always pass `__LINE__, __FILE__` as second/third args to `$this->db->query()`
 - Use `Level::Debug` / `Level::Warning` (Monolog 3 enum) — not `Logger::DEBUG` / `Logger::WARNING`
 - `write()` receives `Monolog\LogRecord` — access fields as properties (`$record->context`, `$record->level->value`, `$record->message`, `$record->datetime`)
+- `write()` delegates to `writeRecord()` behind a static `self::$writing` re-entrancy guard; a failed persist is contained and dropped to `error_log()` so logging never aborts the caller or recurses via `myadmin_log()`
 - Tests source connection settings from env vars (`MONOLOG_MYDB_HOST`, `_USER`, `_PASS`, `_DB`) or PHPUnit `<var>` blocks (`db_host`, `db_username`, `db_password`, `db_name`) in `phpunit_mysql.xml`; tests skip gracefully when MySQL is unreachable
 
 ## PSR-4 Autoload

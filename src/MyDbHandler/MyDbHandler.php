@@ -249,6 +249,50 @@ class MyDbHandler extends AbstractProcessingHandler
      */
     protected function write(LogRecord $record): void
     {
+        /*
+         * Writing a log record is database work, and this handler shares the
+         * application's Db object. When a query fails, the abstraction layer
+         * reports it via emailError() -> Mail::adminMail() -> myadmin_log(),
+         * which lands back here. If the connection is broken that write fails
+         * too, and the cycle repeats until the stack is exhausted.
+         *
+         * Static, because the cycle runs through separate handler instances
+         * whenever a logger is rebuilt mid-request.
+         */
+        if (self::$writing === true) {
+            error_log('MyDbHandler: dropped log record while already writing one (recursion guard): '.$record->message);
+            return;
+        }
+        self::$writing = true;
+        try {
+            $this->writeRecord($record);
+        } catch (\Throwable $e) {
+            /*
+             * Logging is never important enough to abort the caller. Degrade to
+             * error_log(), which cannot re-enter.
+             */
+            error_log('MyDbHandler: failed to persist log record ('.$e->getMessage().'): '.$record->message);
+        } finally {
+            self::$writing = false;
+        }
+    }
+
+    /**
+     * Re-entrancy guard for {@see self::write()}.
+     *
+     * @var bool
+     */
+    private static bool $writing = false;
+
+    /**
+     * The original write() body. Only ever called via write(), which owns the
+     * re-entrancy guard and exception containment.
+     *
+     * @param LogRecord $record The Monolog record being written.
+     * @return void
+     */
+    private function writeRecord(LogRecord $record): void
+    {
         if (!$this->initialized) {
             $this->initialize();
         }
